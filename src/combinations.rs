@@ -2,30 +2,38 @@ use std::fmt;
 use std::iter::FusedIterator;
 
 use super::lazy_buffer::LazyBuffer;
+use super::vec_items::{VecItems, CollectToVec, MapSlice};
 use alloc::vec::Vec;
 
 /// An iterator to iterate through all the `k`-length combinations in an iterator.
 ///
 /// See [`.combinations()`](crate::Itertools::combinations) for more information.
+pub type Combinations<I> = CombinationsBase<I, CollectToVec>;
+
+/// TODO: COPY/UPDATE DOC
+pub type CombinationsMap<I, F> = CombinationsBase<I, MapSlice<F, <I as Iterator>::Item>>;
+
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-pub struct Combinations<I: Iterator> {
+pub struct CombinationsBase<I: Iterator, F> {
+    manager: F,
     indices: Vec<usize>,
     pool: LazyBuffer<I>,
     first: bool,
 }
 
-impl<I> Clone for Combinations<I>
+impl<I, F> Clone for CombinationsBase<I, F>
     where I: Clone + Iterator,
           I::Item: Clone,
+          F: Clone,
 {
-    clone_fields!(indices, pool, first);
+    clone_fields!(manager, indices, pool, first);
 }
 
-impl<I> fmt::Debug for Combinations<I>
+impl<I, F> fmt::Debug for CombinationsBase<I, F>
     where I: Iterator + fmt::Debug,
           I::Item: fmt::Debug,
 {
-    debug_fmt_fields!(Combinations, indices, pool, first);
+    debug_fmt_fields!(CombinationsBase, indices, pool, first);
 }
 
 /// Create a new `Combinations` from a clonable iterator.
@@ -35,14 +43,30 @@ pub fn combinations<I>(iter: I, k: usize) -> Combinations<I>
     let mut pool = LazyBuffer::new(iter);
     pool.prefill(k);
 
-    Combinations {
+    CombinationsBase {
+        manager: CollectToVec,
         indices: (0..k).collect(),
         pool,
         first: true,
     }
 }
 
-impl<I: Iterator> Combinations<I> {
+/// TODO: COPY/UPDATE DOC
+pub fn combinations_map<I, F>(iter: I, k: usize, f: F) -> CombinationsMap<I, F>
+    where I: Iterator
+{
+    let mut pool = LazyBuffer::new(iter);
+    pool.prefill(k);
+
+    CombinationsBase {
+        manager: MapSlice::with_capacity(f, k),
+        indices: (0..k).collect(),
+        pool,
+        first: true,
+    }
+}
+
+impl<I: Iterator, F> CombinationsBase<I, F> {
     /// Returns the length of a combination produced by this iterator.
     #[inline]
     pub fn k(&self) -> usize { self.indices.len() }
@@ -79,11 +103,12 @@ impl<I: Iterator> Combinations<I> {
     }
 }
 
-impl<I> Iterator for Combinations<I>
+impl<I, F> Iterator for CombinationsBase<I, F>
     where I: Iterator,
-          I::Item: Clone
+          I::Item: Clone,
+          F: VecItems<I::Item>,
 {
-    type Item = Vec<I::Item>;
+    type Item = F::Output;
     fn next(&mut self) -> Option<Self::Item> {
         if self.first {
             if self.k() > self.n() {
@@ -118,11 +143,13 @@ impl<I> Iterator for Combinations<I>
         }
 
         // Create result vector based on the indices
-        Some(self.indices.iter().map(|i| self.pool[*i].clone()).collect())
+        let Self { manager, indices, pool, .. } = self;
+        Some(manager.new_item(indices.iter().map(|i| pool[*i].clone())))
     }
 }
 
-impl<I> FusedIterator for Combinations<I>
+impl<I, F> FusedIterator for CombinationsBase<I, F>
     where I: Iterator,
-          I::Item: Clone
+          I::Item: Clone,
+          F: VecItems<I::Item>,
 {}

@@ -902,6 +902,19 @@ fn combinations_of_too_short() {
     }
 }
 
+#[test]
+fn combinations_map() {
+    // Equal if it just owns the slice.
+    it::assert_equal(
+        (0..10).combinations_map(4, ToOwned::to_owned),
+        (0..10).combinations(4),
+    );
+    // `it.combinations_map(k, closure)` == `it.combinations(k).map(closure)`
+    it::assert_equal(
+        (0..10).combinations_map(6, |d| d[0] + d[1] + d[2]),
+        (0..10).combinations(6).map(|d| d[0] + d[1] + d[2]),
+    );
+}
 
 #[test]
 fn combinations_zero() {

@@ -113,7 +113,7 @@ pub mod structs {
     #[cfg(feature = "use_alloc")]
     pub use crate::adaptors::MultiProduct;
     #[cfg(feature = "use_alloc")]
-    pub use crate::combinations::Combinations;
+    pub use crate::combinations::{Combinations, CombinationsMap};
     #[cfg(feature = "use_alloc")]
     pub use crate::combinations_with_replacement::CombinationsWithReplacement;
     pub use crate::cons_tuples_impl::ConsTuples;
@@ -243,6 +243,8 @@ mod duplicates_impl;
 #[cfg(feature = "use_std")]
 mod unique_impl;
 mod unziptuple;
+#[cfg(feature = "use_alloc")]
+mod vec_items;
 mod with_position;
 mod zip_eq_impl;
 mod zip_longest;
@@ -1623,6 +1625,16 @@ pub trait Itertools : Iterator {
               Self::Item: Clone
     {
         combinations::combinations(self, k)
+    }
+
+    /// TODO: COPY/UPDATE DOC
+    #[cfg(feature = "use_alloc")]
+    fn combinations_map<R, F>(self, k: usize, f: F) -> CombinationsMap<Self, F>
+        where Self: Sized,
+              Self::Item: Clone,
+              F: FnMut(&[Self::Item]) -> R,
+    {
+        combinations::combinations_map(self, k, f)
     }
 
     /// Return an iterator that iterates over the `k`-length combinations of
