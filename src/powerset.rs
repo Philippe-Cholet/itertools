@@ -1,34 +1,40 @@
 use std::fmt;
 use std::iter::FusedIterator;
 use std::usize;
-use alloc::vec::Vec;
 
-use super::combinations::{Combinations, combinations};
+use super::combinations::{CombinationsBase, combinations, combinations_map};
 use super::size_hint;
+use super::vec_items::{VecItems, CollectToVec, MapSlice};
 
 /// An iterator to iterate through the powerset of the elements from an iterator.
 ///
 /// See [`.powerset()`](crate::Itertools::powerset) for more
 /// information.
+pub type Powerset<I> = PowersetBase<I, CollectToVec>;
+
+/// TODO: COPY/UPDATE DOC
+pub type PowersetMap<I, F> = PowersetBase<I, MapSlice<F, <I as Iterator>::Item>>;
+
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-pub struct Powerset<I: Iterator> {
-    combs: Combinations<I>,
+pub struct PowersetBase<I: Iterator, F> {
+    combs: CombinationsBase<I, F>,
     // Iterator `position` (equal to count of yielded elements).
     pos: usize,
 }
 
-impl<I> Clone for Powerset<I>
+impl<I, F> Clone for PowersetBase<I, F>
     where I: Clone + Iterator,
           I::Item: Clone,
+          F: Clone,
 {
     clone_fields!(combs, pos);
 }
 
-impl<I> fmt::Debug for Powerset<I>
+impl<I, F> fmt::Debug for PowersetBase<I, F>
     where I: Iterator + fmt::Debug,
           I::Item: fmt::Debug,
 {
-    debug_fmt_fields!(Powerset, combs, pos);
+    debug_fmt_fields!(PowersetBase, combs, pos);
 }
 
 /// Create a new `Powerset` from a clonable iterator.
@@ -36,18 +42,30 @@ pub fn powerset<I>(src: I) -> Powerset<I>
     where I: Iterator,
           I::Item: Clone,
 {
-    Powerset {
+    PowersetBase {
         combs: combinations(src, 0),
         pos: 0,
     }
 }
 
-impl<I> Iterator for Powerset<I>
+/// TODO: COPY/UPDATE DOC
+pub fn powerset_map<I, F>(src: I, f: F) -> PowersetMap<I, F>
+    where I: Iterator,
+          I::Item: Clone,
+{
+    PowersetBase {
+        combs: combinations_map(src, 0, f),
+        pos: 0,
+    }
+}
+
+impl<I, F> Iterator for PowersetBase<I, F>
     where
         I: Iterator,
         I::Item: Clone,
+        F: VecItems<I::Item>,
 {
-    type Item = Vec<I::Item>;
+    type Item = F::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(elt) = self.combs.next() {
@@ -83,8 +101,9 @@ impl<I> Iterator for Powerset<I>
     }
 }
 
-impl<I> FusedIterator for Powerset<I>
+impl<I, F> FusedIterator for PowersetBase<I, F>
     where
         I: Iterator,
         I::Item: Clone,
+        F: VecItems<I::Item>,
 {}

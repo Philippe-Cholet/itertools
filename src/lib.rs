@@ -138,7 +138,7 @@ pub mod structs {
     pub use crate::permutations::Permutations;
     pub use crate::process_results_impl::ProcessResults;
     #[cfg(feature = "use_alloc")]
-    pub use crate::powerset::Powerset;
+    pub use crate::powerset::{Powerset, PowersetMap};
     #[cfg(feature = "use_alloc")]
     pub use crate::put_back_n_impl::PutBackN;
     #[cfg(feature = "use_alloc")]
@@ -1744,6 +1744,16 @@ pub trait Itertools : Iterator {
               Self::Item: Clone,
     {
         powerset::powerset(self)
+    }
+
+    /// TODO: COPY/UPDATE DOC
+    #[cfg(feature = "use_alloc")]
+    fn powerset_map<R, F>(self, f: F) -> PowersetMap<Self, F>
+        where Self: Sized,
+              Self::Item: Clone,
+              F: FnMut(&[Self::Item]) -> R,
+    {
+        powerset::powerset_map(self, f)
     }
 
     /// Return an iterator adaptor that pads the sequence to a minimum length of

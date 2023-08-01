@@ -979,6 +979,20 @@ fn powerset() {
 }
 
 #[test]
+fn powerset_map() {
+    // Equal if it just owns the slice.
+    it::assert_equal(
+        (0..10).powerset_map(ToOwned::to_owned),
+        (0..10).powerset(),
+    );
+    // `it.powerset_map(closure)` == `it.powerset().map(closure)`
+    it::assert_equal(
+        (0..10).powerset_map(|d| d.iter().take(3).sum::<i32>()),
+        (0..10).powerset().map(|d| d.iter().take(3).sum::<i32>()),
+    );
+}
+
+#[test]
 fn diff_mismatch() {
     let a = vec![1, 2, 3, 4];
     let b = vec![1.0, 5.0, 3.0, 4.0];
