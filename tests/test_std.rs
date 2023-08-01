@@ -990,6 +990,21 @@ fn combinations_with_replacement_map() {
 }
 
 #[test]
+fn multi_cartesian_product_map() {
+    let ranges = (1..6).map(|i| i..2 * i);
+    // Equal if it just owns the slice.
+    it::assert_equal(
+        ranges.clone().multi_cartesian_product_map(ToOwned::to_owned),
+        ranges.clone().multi_cartesian_product(),
+    );
+    // `it.multi_cartesian_product_map(closure)` == `it.multi_cartesian_product().map(closure)`
+    it::assert_equal(
+        ranges.clone().multi_cartesian_product_map(|d| d[0] + d[1] + d[2]),
+        ranges.multi_cartesian_product().map(|d| d[0] + d[1] + d[2]),
+    );
+}
+
+#[test]
 fn powerset() {
     it::assert_equal((0..0).powerset(), vec![vec![]]);
     it::assert_equal((0..1).powerset(), vec![vec![], vec![0]]);

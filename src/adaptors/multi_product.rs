@@ -1,11 +1,11 @@
 #![cfg(feature = "use_alloc")]
 
 use crate::size_hint;
+use crate::vec_items::{VecItems, CollectToVec, MapSlice};
 use crate::Itertools;
 
 use alloc::vec::Vec;
 
-#[derive(Clone)]
 /// An iterator adaptor that iterates over the cartesian product of
 /// multiple iterators of type `I`.
 ///
@@ -13,17 +13,27 @@ use alloc::vec::Vec;
 ///
 /// See [`.multi_cartesian_product()`](crate::Itertools::multi_cartesian_product)
 /// for more information.
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-pub struct MultiProduct<I>(Vec<MultiProductIter<I>>)
-    where I: Iterator + Clone,
-          I::Item: Clone;
+pub type MultiProduct<I> = MultiProductBase<I, CollectToVec>;
 
-impl<I> std::fmt::Debug for MultiProduct<I>
+/// TODO: COPY/UPDATE DOC
+pub type MultiProductMap<I, F> = MultiProductBase<I, MapSlice<F, <I as Iterator>::Item>>;
+
+#[derive(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+pub struct MultiProductBase<I, F>
+    where I: Iterator + Clone,
+          I::Item: Clone
+{
+    manager: F,
+    iters: Vec<MultiProductIter<I>>,
+}
+
+impl<I, F> std::fmt::Debug for MultiProductBase<I, F>
 where
     I: Iterator + Clone + std::fmt::Debug,
     I::Item: Clone + std::fmt::Debug,
 {
-    debug_fmt_fields!(CoalesceBy, 0);
+    debug_fmt_fields!(MultiProductBase, iters);
 }
 
 /// Create a new cartesian product iterator over an arbitrary number
@@ -36,7 +46,24 @@ pub fn multi_cartesian_product<H>(iters: H) -> MultiProduct<<H::Item as IntoIter
           <H::Item as IntoIterator>::IntoIter: Clone,
           <H::Item as IntoIterator>::Item: Clone
 {
-    MultiProduct(iters.map(|i| MultiProductIter::new(i.into_iter())).collect())
+    MultiProductBase {
+        manager: CollectToVec,
+        iters: iters.map(|i| MultiProductIter::new(i.into_iter())).collect(),
+    }
+}
+
+/// TODO: COPY/UPDATE DOC
+pub fn multi_cartesian_product_map<H, F>(iters: H, f: F) -> MultiProductMap<<H::Item as IntoIterator>::IntoIter, F>
+    where H: Iterator,
+          H::Item: IntoIterator,
+          <H::Item as IntoIterator>::IntoIter: Clone,
+          <H::Item as IntoIterator>::Item: Clone
+{
+    let iters = iters.map(|i| MultiProductIter::new(i.into_iter())).collect_vec();
+    MultiProductBase {
+        manager: MapSlice::with_capacity(f, iters.len()),
+        iters,
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -57,7 +84,7 @@ enum MultiProductIterState {
     MidIter { on_first_iter: bool },
 }
 
-impl<I> MultiProduct<I>
+impl<I, F> MultiProductBase<I, F>
     where I: Iterator + Clone,
           I::Item: Clone
 {
@@ -87,7 +114,7 @@ impl<I> MultiProduct<I>
 
             if last.in_progress() {
                 true
-            } else if MultiProduct::iterate_last(rest, state) {
+            } else if Self::iterate_last(rest, state) {
                 last.reset();
                 last.iterate();
                 // If iterator is None twice consecutively, then iterator is
@@ -106,17 +133,10 @@ impl<I> MultiProduct<I>
         }
     }
 
-    /// Returns the unwrapped value of the next iteration.
-    fn curr_iterator(&self) -> Vec<I::Item> {
-        self.0.iter().map(|multi_iter| {
-            multi_iter.cur.clone().unwrap()
-        }).collect()
-    }
-
     /// Returns true if iteration has started and has not yet finished; false
     /// otherwise.
     fn in_progress(&self) -> bool {
-        if let Some(last) = self.0.last() {
+        if let Some(last) = self.iters.last() {
             last.in_progress()
         } else {
             false
@@ -153,35 +173,39 @@ impl<I> MultiProductIter<I>
     }
 }
 
-impl<I> Iterator for MultiProduct<I>
+impl<I, F> Iterator for MultiProductBase<I, F>
     where I: Iterator + Clone,
-          I::Item: Clone
+          I::Item: Clone,
+          F: VecItems<I::Item>,
 {
-    type Item = Vec<I::Item>;
+    type Item = F::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if MultiProduct::iterate_last(
-            &mut self.0,
+        if Self::iterate_last(
+            &mut self.iters,
             MultiProductIterState::StartOfIter
         ) {
-            Some(self.curr_iterator())
+            // Returns the unwrapped value of the next iteration.
+            Some(self.manager.new_item(self.iters.iter().map(|multi_iter| {
+                multi_iter.cur.clone().unwrap()
+            })))
         } else {
             None
         }
     }
 
     fn count(self) -> usize {
-        if self.0.is_empty() {
+        if self.iters.is_empty() {
             return 0;
         }
 
         if !self.in_progress() {
-            return self.0.into_iter().fold(1, |acc, multi_iter| {
+            return self.iters.into_iter().fold(1, |acc, multi_iter| {
                 acc * multi_iter.iter.count()
             });
         }
 
-        self.0.into_iter().fold(
+        self.iters.into_iter().fold(
             0,
             |acc, MultiProductIter { iter, iter_orig, cur: _ }| {
                 let total_count = iter_orig.count();
@@ -193,17 +217,17 @@ impl<I> Iterator for MultiProduct<I>
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         // Not ExactSizeIterator because size may be larger than usize
-        if self.0.is_empty() {
+        if self.iters.is_empty() {
             return (0, Some(0));
         }
 
         if !self.in_progress() {
-            return self.0.iter().fold((1, Some(1)), |acc, multi_iter| {
+            return self.iters.iter().fold((1, Some(1)), |acc, multi_iter| {
                 size_hint::mul(acc, multi_iter.iter.size_hint())
             });
         }
 
-        self.0.iter().fold(
+        self.iters.iter().fold(
             (0, Some(0)),
             |acc, &MultiProductIter { ref iter, ref iter_orig, cur: _ }| {
                 let cur_size = iter.size_hint();
@@ -213,16 +237,16 @@ impl<I> Iterator for MultiProduct<I>
         )
     }
 
-    fn last(self) -> Option<Self::Item> {
-        let iter_count = self.0.len();
+    fn last(mut self) -> Option<Self::Item> {
+        let iter_count = self.iters.len();
 
-        let lasts: Self::Item = self.0.into_iter()
+        let lasts = self.iters.into_iter()
             .map(|multi_iter| multi_iter.iter.last())
             .while_some()
-            .collect();
+            .collect_vec();
 
         if lasts.len() == iter_count {
-            Some(lasts)
+            Some(self.manager.new_item(lasts.into_iter()))
         } else {
             None
         }

@@ -111,7 +111,7 @@ pub mod structs {
     #[allow(deprecated)]
     pub use crate::adaptors::{MapResults, Step};
     #[cfg(feature = "use_alloc")]
-    pub use crate::adaptors::MultiProduct;
+    pub use crate::adaptors::{MultiProduct, MultiProductMap};
     #[cfg(feature = "use_alloc")]
     pub use crate::combinations::{Combinations, CombinationsMap};
     #[cfg(feature = "use_alloc")]
@@ -1189,6 +1189,18 @@ pub trait Itertools : Iterator {
               <Self::Item as IntoIterator>::Item: Clone
     {
         adaptors::multi_cartesian_product(self)
+    }
+
+    /// TODO: COPY/UPDATE DOC
+    #[cfg(feature = "use_alloc")]
+    fn multi_cartesian_product_map<R, F>(self, f: F) -> MultiProductMap<<Self::Item as IntoIterator>::IntoIter, F>
+        where Self: Sized,
+              Self::Item: IntoIterator,
+              <Self::Item as IntoIterator>::IntoIter: Clone,
+              <Self::Item as IntoIterator>::Item: Clone,
+              F: FnMut(&[<Self::Item as IntoIterator>::Item]) -> R,
+    {
+        adaptors::multi_cartesian_product_map(self, f)
     }
 
     /// Return an iterator adaptor that uses the passed-in closure to
