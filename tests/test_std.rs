@@ -976,6 +976,20 @@ fn combinations_with_replacement() {
 }
 
 #[test]
+fn combinations_with_replacement_map() {
+    // Equal if it just owns the slice.
+    it::assert_equal(
+        (0..10).combinations_with_replacement_map(5, ToOwned::to_owned),
+        (0..10).combinations_with_replacement(5),
+    );
+    // `it.combinations_with_replacement_map(k, closure)` == `it.combinations_with_replacement(k).map(closure)`
+    it::assert_equal(
+        (0..10).combinations_with_replacement_map(5, |d| d.iter().take(3).sum::<i32>()),
+        (0..10).combinations_with_replacement(5).map(|d| d.iter().take(3).sum::<i32>()),
+    );
+}
+
+#[test]
 fn powerset() {
     it::assert_equal((0..0).powerset(), vec![vec![]]);
     it::assert_equal((0..1).powerset(), vec![vec![], vec![0]]);

@@ -115,7 +115,7 @@ pub mod structs {
     #[cfg(feature = "use_alloc")]
     pub use crate::combinations::{Combinations, CombinationsMap};
     #[cfg(feature = "use_alloc")]
-    pub use crate::combinations_with_replacement::CombinationsWithReplacement;
+    pub use crate::combinations_with_replacement::{CombinationsWithReplacement, CombinationsWithReplacementMap};
     pub use crate::cons_tuples_impl::ConsTuples;
     pub use crate::exactly_one_err::ExactlyOneError;
     pub use crate::format::{Format, FormatWith};
@@ -1663,6 +1663,17 @@ pub trait Itertools : Iterator {
         Self::Item: Clone,
     {
         combinations_with_replacement::combinations_with_replacement(self, k)
+    }
+
+    /// TODO: COPY/UPDATE DOC
+    #[cfg(feature = "use_alloc")]
+    fn combinations_with_replacement_map<R, F>(self, k: usize, f: F) -> CombinationsWithReplacementMap<Self, F>
+    where
+        Self: Sized,
+        Self::Item: Clone,
+        F: FnMut(&[Self::Item]) -> R,
+    {
+        combinations_with_replacement::combinations_with_replacement_map(self, k, f)
     }
 
     /// Return an iterator adaptor that iterates over all k-permutations of the
