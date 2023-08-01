@@ -929,6 +929,20 @@ fn permutations_zero() {
 }
 
 #[test]
+fn permutations_map() {
+    // Equal if it just owns the slice.
+    it::assert_equal(
+        (0..10).permutations_map(5, ToOwned::to_owned),
+        (0..10).permutations(5),
+    );
+    // `it.permutations_map(k, closure)` == `it.permutations(k).map(closure)`
+    it::assert_equal(
+        (0..10).permutations_map(5, |d| d.iter().take(3).sum::<i32>()),
+        (0..10).permutations(5).map(|d| d.iter().take(3).sum::<i32>()),
+    );
+}
+
+#[test]
 fn combinations_with_replacement() {
     // Pool smaller than n
     it::assert_equal((0..1).combinations_with_replacement(2), vec![vec![0, 0]]);

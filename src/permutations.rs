@@ -3,23 +3,31 @@ use std::fmt;
 use std::iter::once;
 
 use super::lazy_buffer::LazyBuffer;
+use super::vec_items::{VecItems, CollectToVec, MapSlice};
 
 /// An iterator adaptor that iterates through all the `k`-permutations of the
 /// elements from an iterator.
 ///
 /// See [`.permutations()`](crate::Itertools::permutations) for
 /// more information.
+pub type Permutations<I> = PermutationsBase<I, CollectToVec>;
+
+/// TODO: COPY/UPDATE DOC
+pub type PermutationsMap<I, F> = PermutationsBase<I, MapSlice<F, <I as Iterator>::Item>>;
+
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-pub struct Permutations<I: Iterator> {
+pub struct PermutationsBase<I: Iterator, F> {
+    manager: F,
     vals: LazyBuffer<I>,
     state: PermutationState,
 }
 
-impl<I> Clone for Permutations<I>
+impl<I, F> Clone for PermutationsBase<I, F>
     where I: Clone + Iterator,
           I::Item: Clone,
+          F: Clone,
 {
-    clone_fields!(vals, state);
+    clone_fields!(manager, vals, state);
 }
 
 #[derive(Clone, Debug)]
@@ -52,11 +60,11 @@ enum CompleteStateRemaining {
     Overflow,
 }
 
-impl<I> fmt::Debug for Permutations<I>
+impl<I, F> fmt::Debug for PermutationsBase<I, F>
     where I: Iterator + fmt::Debug,
           I::Item: fmt::Debug,
 {
-    debug_fmt_fields!(Permutations, vals, state);
+    debug_fmt_fields!(PermutationsBase, vals, state);
 }
 
 pub fn permutations<I: Iterator>(iter: I, k: usize) -> Permutations<I> {
@@ -66,7 +74,8 @@ pub fn permutations<I: Iterator>(iter: I, k: usize) -> Permutations<I> {
         // Special case, yields single empty vec; `n` is irrelevant
         let state = PermutationState::Complete(CompleteState::Start { n: 0, k: 0 });
 
-        return Permutations {
+        return PermutationsBase {
+            manager: CollectToVec,
             vals,
             state
         };
@@ -87,23 +96,61 @@ pub fn permutations<I: Iterator>(iter: I, k: usize) -> Permutations<I> {
         PermutationState::Empty
     };
 
-    Permutations {
+    PermutationsBase {
+        manager: CollectToVec,
         vals,
         state
     }
 }
 
-impl<I> Iterator for Permutations<I>
+pub fn permutations_map<I: Iterator, F>(iter: I, k: usize, f: F) -> PermutationsMap<I, F> {
+    let mut vals = LazyBuffer::new(iter);
+
+    if k == 0 {
+        // Special case, yields single empty vec; `n` is irrelevant
+        let state = PermutationState::Complete(CompleteState::Start { n: 0, k: 0 });
+
+        return PermutationsBase {
+            manager: MapSlice::new(f),
+            vals,
+            state
+        };
+    }
+
+    let mut enough_vals = true;
+
+    while vals.len() < k {
+        if !vals.get_next() {
+            enough_vals = false;
+            break;
+        }
+    }
+
+    let state = if enough_vals {
+        PermutationState::StartUnknownLen { k }
+    } else {
+        PermutationState::Empty
+    };
+
+    PermutationsBase {
+        manager: MapSlice::new(f),
+        vals,
+        state
+    }
+}
+
+impl<I, F> Iterator for PermutationsBase<I, F>
 where
     I: Iterator,
-    I::Item: Clone
+    I::Item: Clone,
+    F: VecItems<I::Item>
 {
-    type Item = Vec<I::Item>;
+    type Item = F::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.advance();
 
-        let &mut Permutations { ref vals, ref state } = self;
+        let &mut PermutationsBase { ref mut manager, ref vals, ref state } = self;
 
         match *state {
             PermutationState::StartUnknownLen { .. } => panic!("unexpected iterator state"),
@@ -111,11 +158,11 @@ where
                 let latest_idx = min_n - 1;
                 let indices = (0..(k - 1)).chain(once(latest_idx));
 
-                Some(indices.map(|i| vals[i].clone()).collect())
+                Some(manager.new_item(indices.map(|i| vals[i].clone())))
             }
             PermutationState::Complete(CompleteState::Ongoing { ref indices, ref cycles }) => {
                 let k = cycles.len();
-                Some(indices[0..k].iter().map(|&i| vals[i].clone()).collect())
+                Some(manager.new_item(indices[0..k].iter().map(|&i| vals[i].clone())))
             },
             PermutationState::Complete(CompleteState::Start { .. }) | PermutationState::Empty => None
         }
@@ -131,7 +178,7 @@ where
             }
         }
 
-        let Permutations { vals, state } = self;
+        let PermutationsBase { vals, state, .. } = self;
         match state {
             PermutationState::StartUnknownLen { k } => {
                 let n = vals.len() + vals.it.count();
@@ -164,13 +211,13 @@ where
     }
 }
 
-impl<I> Permutations<I>
+impl<I, F> PermutationsBase<I, F>
 where
     I: Iterator,
     I::Item: Clone
 {
     fn advance(&mut self) {
-        let &mut Permutations { ref mut vals, ref mut state } = self;
+        let &mut PermutationsBase { ref mut vals, ref mut state, .. } = self;
 
         *state = match *state {
             PermutationState::StartUnknownLen { k } => {

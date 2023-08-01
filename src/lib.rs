@@ -135,7 +135,7 @@ pub mod structs {
     pub use crate::pad_tail::PadUsing;
     pub use crate::peeking_take_while::PeekingTakeWhile;
     #[cfg(feature = "use_alloc")]
-    pub use crate::permutations::Permutations;
+    pub use crate::permutations::{Permutations, PermutationsMap};
     pub use crate::process_results_impl::ProcessResults;
     #[cfg(feature = "use_alloc")]
     pub use crate::powerset::{Powerset, PowersetMap};
@@ -1708,6 +1708,16 @@ pub trait Itertools : Iterator {
               Self::Item: Clone
     {
         permutations::permutations(self, k)
+    }
+
+    /// TODO: COPY/UPDATE DOC
+    #[cfg(feature = "use_alloc")]
+    fn permutations_map<R, F>(self, k: usize, f: F) -> PermutationsMap<Self, F>
+        where Self: Sized,
+              Self::Item: Clone,
+              F: FnMut(&[Self::Item]) -> R,
+    {
+        permutations::permutations_map(self, k, f)
     }
 
     /// Return an iterator that iterates through the powerset of the elements from an
