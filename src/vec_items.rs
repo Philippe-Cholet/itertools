@@ -12,9 +12,6 @@ pub struct MapSlice<F, T> {
 }
 
 impl<F, T> MapSlice<F, T> {
-    pub fn new(func: F) -> Self {
-        Self { func, vec: Vec::new() }
-    }
     pub fn with_capacity(func: F, capacity: usize) -> Self {
         Self { func, vec: Vec::with_capacity(capacity) }
     }

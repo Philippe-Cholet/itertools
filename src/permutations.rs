@@ -111,7 +111,7 @@ pub fn permutations_map<I: Iterator, F>(iter: I, k: usize, f: F) -> Permutations
         let state = PermutationState::Complete(CompleteState::Start { n: 0, k: 0 });
 
         return PermutationsBase {
-            manager: MapSlice::new(f),
+            manager: MapSlice::with_capacity(f, k),
             vals,
             state
         };
@@ -133,7 +133,7 @@ pub fn permutations_map<I: Iterator, F>(iter: I, k: usize, f: F) -> Permutations
     };
 
     PermutationsBase {
-        manager: MapSlice::new(f),
+        manager: MapSlice::with_capacity(f, k),
         vals,
         state
     }

@@ -69,7 +69,7 @@ where
     let pool: LazyBuffer<I> = LazyBuffer::new(iter);
 
     CombinationsWithReplacementBase {
-        manager: MapSlice::new(f),
+        manager: MapSlice::with_capacity(f, k),
         indices,
         pool,
         first: true,
