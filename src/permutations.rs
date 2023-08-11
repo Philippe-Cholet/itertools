@@ -103,39 +103,19 @@ pub fn permutations<I: Iterator>(iter: I, k: usize) -> Permutations<I> {
     }
 }
 
-pub fn permutations_map<I: Iterator, F>(iter: I, k: usize, f: F) -> PermutationsMap<I, F> {
-    let mut vals = LazyBuffer::new(iter);
-
-    if k == 0 {
-        // Special case, yields single empty vec; `n` is irrelevant
-        let state = PermutationState::Complete(CompleteState::Start { n: 0, k: 0 });
-
-        return PermutationsBase {
-            manager: MapSlice::with_capacity(f, k),
+impl<I: Iterator> Permutations<I> {
+    /// Instead of slowly generating `Vec<I::Item>` items you might not need,
+    /// it generates `R` items by calling `f(&[I::Item])` instead.
+    pub fn map_slices<R, F>(self, f: F) -> PermutationsMap<I, F>
+    where
+        F: FnMut(&[I::Item]) -> R,
+    {
+        let Self { vals, state, .. } = self;
+        PermutationsMap {
+            manager: MapSlice::with_capacity(f, 0),
             vals,
             state
-        };
-    }
-
-    let mut enough_vals = true;
-
-    while vals.len() < k {
-        if !vals.get_next() {
-            enough_vals = false;
-            break;
         }
-    }
-
-    let state = if enough_vals {
-        PermutationState::StartUnknownLen { k }
-    } else {
-        PermutationState::Empty
-    };
-
-    PermutationsBase {
-        manager: MapSlice::with_capacity(f, k),
-        vals,
-        state
     }
 }
 

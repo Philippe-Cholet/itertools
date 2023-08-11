@@ -1733,16 +1733,6 @@ pub trait Itertools : Iterator {
         permutations::permutations(self, k)
     }
 
-    /// TODO: COPY/UPDATE DOC
-    #[cfg(feature = "use_alloc")]
-    fn permutations_map<R, F>(self, k: usize, f: F) -> PermutationsMap<Self, F>
-        where Self: Sized,
-              Self::Item: Clone,
-              F: FnMut(&[Self::Item]) -> R,
-    {
-        permutations::permutations_map(self, k, f)
-    }
-
     /// Return an iterator that iterates through the powerset of the elements from an
     /// iterator.
     ///

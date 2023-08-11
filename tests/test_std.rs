@@ -929,15 +929,15 @@ fn permutations_zero() {
 }
 
 #[test]
-fn permutations_map() {
+fn permutations_map_slices() {
     // Equal if it just owns the slice.
     it::assert_equal(
-        (0..10).permutations_map(5, ToOwned::to_owned),
+        (0..10).permutations(5).map_slices(ToOwned::to_owned),
         (0..10).permutations(5),
     );
-    // `it.permutations_map(k, closure)` == `it.permutations(k).map(closure)`
+    // `it.permutations(k).map_slices(closure)` == `it.permutations(k).map(closure)`
     it::assert_equal(
-        (0..10).permutations_map(5, |d| d.iter().take(3).sum::<i32>()),
+        (0..10).permutations(5).map_slices(|d| d.iter().take(3).sum::<i32>()),
         (0..10).permutations(5).map(|d| d.iter().take(3).sum::<i32>()),
     );
 }
