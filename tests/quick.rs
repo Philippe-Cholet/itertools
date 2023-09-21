@@ -19,6 +19,10 @@ use quickcheck::TestResult;
 use rand::seq::SliceRandom;
 use rand::Rng;
 
+mod specializations;
+
+use specializations::SpecializationChecker;
+
 /// Trait for size hint modifier types
 trait HintKind: Copy + Send + qc::Arbitrary {
     fn loosen_bounds(&self, org_hint: (usize, Option<usize>)) -> (usize, Option<usize>);
@@ -1861,5 +1865,26 @@ quickcheck! {
         } else {
             result_set.is_empty()
         }
+    }
+}
+
+// Test specialized methods
+quickcheck! {
+    fn my_cartesian_product(a: Vec<u8>, b: Vec<u8>) -> TestResult {
+        let len = a.len() * b.len();
+        if len >= 100 {
+            return TestResult::discard(); // The test would be slow.
+        }
+        let iter = a.iter().cartesian_product(b.iter());
+        SpecializationChecker::new(iter) // It stores `iter` and `Unspecialized(iter)` and remembers the iterator count.
+            .with_iteration_limit(10)    // Do not check every step (default) but only the 10 first ones.
+            .exact_size_hints()          // Check size hints.
+            .count(len)                  // Check counts knowing it should have X elements.
+            // .count(None)                 // *OR* check counts, without further information.
+            .last()                      // Do we always return the right last element?
+            .nth()                       // Check .nth(0) ... .nth(10)  (only up to 10 to fasten it).
+            .collect()
+            .fold((0u32, 0u32), |(s, t), (x, y)| (s + *x as u32, t + *y as u32));
+        TestResult::passed()
     }
 }
