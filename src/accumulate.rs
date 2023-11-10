@@ -138,6 +138,26 @@ where
         }
         size_hint::add_scalar(self.iter.size_hint(), 1)
     }
+
+    fn fold<BB, FF>(self, mut init: BB, mut f: FF) -> BB
+    where
+        FF: FnMut(BB, Self::Item) -> BB,
+    {
+        let Self {
+            iter,
+            accum,
+            mut func,
+        } = self;
+        if let Some(mut b) = accum {
+            init = iter.fold(init, |acc, item| {
+                let new_b = func(&b, item);
+                let old_b = std::mem::replace(&mut b, new_b);
+                f(acc, old_b)
+            });
+            init = f(init, b);
+        }
+        init
+    }
 }
 
 impl<I, B, F> FusedIterator for AccumulateFrom<I, B, F>
