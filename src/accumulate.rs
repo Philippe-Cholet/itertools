@@ -67,6 +67,14 @@ where
         }
     }
 
+    fn count(self) -> usize {
+        match self.peeked {
+            None => self.iter.count(),
+            Some(Some(_)) => self.iter.count() + 1,
+            Some(None) => 0,
+        }
+    }
+
     fn fold<B, G>(self, mut init: B, mut f: G) -> B
     where
         G: FnMut(B, Self::Item) -> B,
