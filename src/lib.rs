@@ -80,7 +80,7 @@ pub use std::iter as __std_iter;
 
 /// The concrete iterator types.
 pub mod structs {
-    pub use crate::accumulate::AccumulateFrom;
+    pub use crate::accumulate::{Accumulate, AccumulateFrom};
     #[cfg(feature = "use_alloc")]
     pub use crate::adaptors::MultiProduct;
     pub use crate::adaptors::{
@@ -411,6 +411,14 @@ macro_rules! chain {
 /// method in the list.
 pub trait Itertools: Iterator {
     // adaptors
+
+    fn accumulate<F>(self, func: F) -> Accumulate<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, Self::Item) -> Self::Item,
+    {
+        accumulate::accumulate(self, func)
+    }
 
     fn accumulate_from<B, F>(self, init: B, func: F) -> AccumulateFrom<Self, B, F>
     where
