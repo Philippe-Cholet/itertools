@@ -15,6 +15,7 @@ where
     }
 }
 
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Accumulate<I: Iterator, F> {
     iter: I,
     peeked: Option<Option<I::Item>>,
@@ -98,6 +99,7 @@ where
 }
 
 #[derive(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct AccumulateFrom<I, B, F> {
     iter: I,
     accum: Option<B>,
