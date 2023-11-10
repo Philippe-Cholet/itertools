@@ -66,6 +66,26 @@ where
             Some(None) => (0, Some(0)),
         }
     }
+
+    fn fold<B, G>(self, mut init: B, mut f: G) -> B
+    where
+        G: FnMut(B, Self::Item) -> B,
+    {
+        let Self {
+            mut iter,
+            peeked,
+            mut func,
+        } = self;
+        if let Some(mut accum) = peeked.unwrap_or_else(|| iter.next()) {
+            init = iter.fold(init, |acc, item| {
+                let new_accum = func(&accum, item);
+                let old_accum = std::mem::replace(&mut accum, new_accum);
+                f(acc, old_accum)
+            });
+            init = f(init, accum);
+        }
+        init
+    }
 }
 
 impl<I, F> FusedIterator for Accumulate<I, F>
