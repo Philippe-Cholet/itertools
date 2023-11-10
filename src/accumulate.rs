@@ -74,6 +74,13 @@ where
 {
 }
 
+impl<I, F> ExactSizeIterator for Accumulate<I, F>
+where
+    I: ExactSizeIterator,
+    F: FnMut(&I::Item, I::Item) -> I::Item,
+{
+}
+
 pub(crate) fn accumulate_from<I, B, F>(
     iter: I,
     init: B,
