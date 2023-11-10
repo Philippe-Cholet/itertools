@@ -1,4 +1,5 @@
 use std::fmt;
+use std::iter::FusedIterator;
 
 use crate::size_hint::{self, SizeHint};
 
@@ -66,6 +67,13 @@ where
     }
 }
 
+impl<I, F> FusedIterator for Accumulate<I, F>
+where
+    I: Iterator,
+    F: FnMut(&I::Item, I::Item) -> I::Item,
+{
+}
+
 pub(crate) fn accumulate_from<I, B, F>(
     iter: I,
     init: B,
@@ -121,4 +129,11 @@ where
         }
         size_hint::add_scalar(self.iter.size_hint(), 1)
     }
+}
+
+impl<I, B, F> FusedIterator for AccumulateFrom<I, B, F>
+where
+    I: Iterator,
+    F: FnMut(&B, I::Item) -> B,
+{
 }
