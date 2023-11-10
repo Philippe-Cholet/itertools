@@ -80,6 +80,7 @@ pub use std::iter as __std_iter;
 
 /// The concrete iterator types.
 pub mod structs {
+    pub use crate::accumulate::AccumulateFrom;
     #[cfg(feature = "use_alloc")]
     pub use crate::adaptors::MultiProduct;
     pub use crate::adaptors::{
@@ -159,6 +160,7 @@ pub use crate::structs::*;
 pub use crate::unziptuple::{multiunzip, MultiUnzip};
 pub use crate::with_position::Position;
 pub use crate::ziptuple::multizip;
+mod accumulate;
 mod adaptors;
 mod either_or_both;
 pub use crate::either_or_both::EitherOrBoth;
@@ -409,6 +411,14 @@ macro_rules! chain {
 /// method in the list.
 pub trait Itertools: Iterator {
     // adaptors
+
+    fn accumulate_from<B, F>(self, init: B, func: F) -> AccumulateFrom<Self, B, F>
+    where
+        Self: Sized,
+        F: FnMut(&B, Self::Item) -> B,
+    {
+        accumulate::accumulate_from(self, init, func)
+    }
 
     /// Alternate elements from two iterators until both have run out.
     ///
