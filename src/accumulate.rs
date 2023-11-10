@@ -159,6 +159,13 @@ where
         size_hint::add_scalar(self.iter.size_hint(), 1)
     }
 
+    fn count(self) -> usize {
+        if self.accum.is_none() {
+            return 0;
+        }
+        self.iter.count() + 1
+    }
+
     fn fold<BB, FF>(self, mut init: BB, mut f: FF) -> BB
     where
         FF: FnMut(BB, Self::Item) -> BB,
