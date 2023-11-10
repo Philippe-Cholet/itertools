@@ -20,6 +20,23 @@ pub struct Accumulate<I: Iterator, F> {
     func: F,
 }
 
+impl<I: Iterator, F> fmt::Debug for Accumulate<I, F>
+where
+    I: fmt::Debug,
+    I::Item: fmt::Debug,
+{
+    debug_fmt_fields!(AccumulateFrom, iter, peeked);
+}
+
+impl<I: Iterator, F> Clone for Accumulate<I, F>
+where
+    I: Clone,
+    I::Item: Clone,
+    F: Clone,
+{
+    clone_fields!(iter, peeked, func);
+}
+
 impl<I, F> Iterator for Accumulate<I, F>
 where
     I: Iterator,
