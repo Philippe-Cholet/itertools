@@ -125,6 +125,14 @@ where
 }
 
 quickcheck! {
+    fn accumulate(v: Vec<u8>) -> () {
+        test_specializations(&v.into_iter().accumulate(|x, y| x.wrapping_add(y)));
+    }
+
+    fn accumulate_from(v: Vec<u8>, n: i32) -> () {
+        test_specializations(&v.into_iter().accumulate_from(n, |x, y| x + i32::from(y)));
+    }
+
     fn interleave(v: Vec<u8>, w: Vec<u8>) -> () {
         test_specializations(&v.iter().interleave(w.iter()));
     }
